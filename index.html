@@ -1,0 +1,928 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html lang="de">\
+<head>\
+    <meta charset="UTF-8" />\
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />\
+    <title>MindfulWeekly HUD</title>\
+    \
+    <!-- PWA Settings for iOS -->\
+    <meta name="apple-mobile-web-app-capable" content="yes">\
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\
+    <meta name="apple-mobile-web-app-title" content="Mindful">\
+    <link rel="apple-touch-icon" href="https://img.icons8.com/dusk/344/journal.png">\
+\
+    <!-- Tailwind CSS -->\
+    <script src="https://cdn.tailwindcss.com"></script>\
+    <script>\
+      tailwind.config = \{\
+        theme: \{\
+          extend: \{\
+            colors: \{\
+              focus: '#3b82f6',\
+              creative: '#8b5cf6',\
+              body: '#22c55e',\
+              mental: '#eab308',\
+              leisure: '#ec4899',\
+              paper: '#f9fafb',\
+            \},\
+            fontFamily: \{\
+              sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],\
+            \},\
+            spacing: \{\
+              'safe-bottom': 'env(safe-area-inset-bottom)',\
+            \}\
+          \}\
+        \}\
+      \}\
+    </script>\
+    <style>\
+      body \{ \
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; \
+        background-color: #f9fafb; \
+        color: #111827; \
+        overflow-x: hidden;\
+        -webkit-tap-highlight-color: transparent;\
+      \}\
+      \
+      /* Hide Scrollbar but allow scroll */\
+      ::-webkit-scrollbar \{ width: 0px; background: transparent; \}\
+      \
+      .glass \{ background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); \}\
+      \
+      /* iOS Specifics */\
+      input, textarea, select \{ font-size: 16px !important; \} /* Prevents auto-zoom on iOS */\
+      \
+      @media print \{\
+        .no-print \{ display: none !important; \}\
+        body \{ background-color: white; \}\
+        #sidebar, #mobile-nav, #mobile-fab \{ display: none; \}\
+        #main-container \{ margin-left: 0 !important; padding: 0 !important; \}\
+      \}\
+\
+      /* Animation classes */\
+      .fade-in \{ animation: fadeIn 0.3s ease-in-out; \}\
+      @keyframes fadeIn \{ from \{ opacity: 0; transform: translateY(10px); \} to \{ opacity: 1; transform: translateY(0); \} \}\
+    </style>\
+</head>\
+<body class="bg-gray-50 text-gray-900 h-screen overflow-hidden flex flex-col">\
+\
+    <!-- SECURITY: LOCK SCREEN -->\
+    <div id="lock-screen" class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gray-100/95 backdrop-blur-xl">\
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center mx-4">\
+            <div class="mb-8 flex justify-center">\
+               <div class="w-20 h-20 bg-black rounded-3xl flex items-center justify-center text-white shadow-lg">\
+                 <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>\
+               </div>\
+            </div>\
+            <h2 class="text-3xl font-bold mb-2 text-gray-900 tracking-tight">Welcome Back</h2>\
+            <p class="text-gray-500 mb-8 text-base">Mindful Weekly Locked</p>\
+            \
+            <form id="pin-form" class="space-y-6">\
+              <!-- Type="tel" triggers numeric keypad on iPhone -->\
+              <input type="tel" id="pin-input" class="w-full text-center text-3xl tracking-[0.5em] p-4 border-2 border-gray-100 bg-gray-50 text-gray-900 rounded-2xl outline-none focus:border-black focus:ring-4 focus:ring-black/10 transition-all placeholder-gray-300" maxLength="4" placeholder="\'95\'95\'95\'95" />\
+              <p id="pin-error" class="text-red-500 text-sm font-bold hidden bg-red-50 py-2 rounded-lg">Falscher Code</p>\
+              <button type="submit" class="w-full bg-black text-white py-4 rounded-2xl text-lg font-bold hover:bg-gray-800 transition-transform active:scale-95 shadow-xl">Entsperren</button>\
+            </form>\
+        </div>\
+    </div>\
+\
+    <!-- APP WRAPPER -->\
+    <div id="app-wrapper" class="hidden flex-1 flex flex-col h-full overflow-hidden relative">\
+        \
+        <!-- View Switcher (Floating) -->\
+        <button onclick="toggleViewMode()" class="fixed bottom-24 right-6 z-[60] bg-white text-black border border-gray-200 shadow-2xl p-3 rounded-full flex items-center justify-center transition-transform active:scale-90 no-print" title="Switch View">\
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>\
+        </button>\
+\
+        <!-- CONTAINER: Will be injected with either Desktop or Mobile layout -->\
+        <div id="main-interface" class="flex-1 flex overflow-hidden">\
+            <!-- Dynamic Content -->\
+        </div>\
+\
+    </div>\
+\
+    <!-- MODALS & HIDDEN INPUTS -->\
+    <input type="file" id="backup-upload" class="hidden" accept=".json" onchange="handleBackupUpload(event)" />\
+\
+    <!-- JAVASCRIPT LOGIC -->\
+    <script>\
+        // --- CONSTANTS ---\
+        const PIN_CODE = '2025';\
+        const STORAGE_KEY = 'mindful_weekly_data';\
+        \
+        const ICONS = \{\
+            check: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',\
+            plus: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>',\
+            trash: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',\
+            home: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>',\
+            book: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>',\
+            menu: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>',\
+            calendar: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>',\
+            activity: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>',\
+            arrowRight: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>'\
+        \};\
+\
+        const CATEGORIES = \{\
+            FOCUS: 'Fokus', CREATIVE: 'Kreativ', BODY: 'K\'f6rper', MENTAL: 'Mental', LEISURE: 'Freizeit', UNASSIGNED: 'Allgemein'\
+        \};\
+\
+        const THEMES = \{\
+            [CATEGORIES.FOCUS]: \{ border: 'border-blue-500', text: 'text-blue-700', bg: 'bg-blue-50', badge: 'bg-blue-100 text-blue-800' \},\
+            [CATEGORIES.CREATIVE]: \{ border: 'border-violet-500', text: 'text-violet-700', bg: 'bg-violet-50', badge: 'bg-violet-100 text-violet-800' \},\
+            [CATEGORIES.BODY]: \{ border: 'border-green-500', text: 'text-green-700', bg: 'bg-green-50', badge: 'bg-green-100 text-green-800' \},\
+            [CATEGORIES.MENTAL]: \{ border: 'border-yellow-400', text: 'text-yellow-700', bg: 'bg-yellow-50', badge: 'bg-yellow-100 text-yellow-800' \},\
+            [CATEGORIES.LEISURE]: \{ border: 'border-pink-500', text: 'text-pink-700', bg: 'bg-pink-50', badge: 'bg-pink-100 text-pink-800' \},\
+            [CATEGORIES.UNASSIGNED]: \{ border: 'border-gray-300', text: 'text-gray-700', bg: 'bg-gray-50', badge: 'bg-gray-100 text-gray-800' \},\
+        \};\
+\
+        // --- STATE ---\
+        let state = \{\
+            tasks: [],\
+            journal: [],\
+            people: [],\
+            habits: [],\
+            workouts: [],\
+            intention: \{ day: '', week: '', month: '', year: '' \},\
+            goals: \{ monthly: '', yearly: '' \},\
+            dailyReflections: \{\},\
+            friendRankings: \{\}\
+        \};\
+        \
+        // App View State\
+        let isMobile = window.innerWidth < 768; // Default detection\
+        let currentView = 'todo'; // 'todo', 'journal', 'menu' (for mobile)\
+        let viewState = \{ todoDate: new Date().toISOString().split('T')[0], rankingDate: new Date().toISOString().split('T')[0] \};\
+\
+        // --- INIT ---\
+        window.addEventListener('DOMContentLoaded', () => \{\
+            loadState();\
+            checkLock();\
+        \});\
+\
+        // Toggle Function\
+        window.toggleViewMode = () => \{\
+            isMobile = !isMobile;\
+            render();\
+        \};\
+\
+        function loadState() \{\
+            try \{\
+                const saved = localStorage.getItem(STORAGE_KEY);\
+                if (saved) state = \{ ...state, ...JSON.parse(saved) \};\
+            \} catch (e) \{ console.error("Load failed", e); \}\
+        \}\
+\
+        function saveState() \{\
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));\
+            render();\
+        \}\
+\
+        function generateId() \{ return Date.now().toString(36) + Math.random().toString(36).substring(2, 9); \}\
+\
+        // --- LOCK SCREEN ---\
+        function checkLock() \{\
+            const unlocked = sessionStorage.getItem('mindful_unlocked');\
+            if (unlocked === 'true') unlockApp();\
+            else document.getElementById('pin-input').focus();\
+        \}\
+\
+        document.getElementById('pin-form').addEventListener('submit', (e) => \{\
+            e.preventDefault();\
+            const input = document.getElementById('pin-input');\
+            const error = document.getElementById('pin-error');\
+            if (input.value === PIN_CODE) \{\
+                sessionStorage.setItem('mindful_unlocked', 'true');\
+                unlockApp();\
+            \} else \{\
+                error.classList.remove('hidden');\
+                input.value = '';\
+                setTimeout(() => error.classList.add('hidden'), 1500);\
+            \}\
+        \});\
+\
+        function unlockApp() \{\
+            document.getElementById('lock-screen').classList.add('hidden');\
+            document.getElementById('app-wrapper').classList.remove('hidden');\
+            render();\
+        \}\
+\
+        // --- ROUTER ---\
+        window.router = (view) => \{\
+            currentView = view;\
+            render();\
+        \};\
+\
+        // --- RENDER MAIN ---\
+        function render() \{\
+            const container = document.getElementById('main-interface');\
+            if (isMobile) \{\
+                container.innerHTML = renderMobileLayout();\
+                // Attach Mobile specific listeners\
+                if(currentView === 'todo') \{\
+                     // Ensure today is scrolled into view or top\
+                \}\
+            \} else \{\
+                container.innerHTML = renderDesktopLayout();\
+            \}\
+        \}\
+\
+        // ==========================================\
+        //       MOBILE HUD LAYOUT (NEW)\
+        // ==========================================\
+        \
+        function renderMobileLayout() \{\
+            let content = '';\
+            let fab = ''; // Floating Action Button / Sticky Input\
+\
+            switch(currentView) \{\
+                case 'todo': \
+                    content = renderMobileTodo(); \
+                    fab = renderMobileStickyInput();\
+                    break;\
+                case 'journal': content = renderMobileJournal(); break;\
+                case 'menu': content = renderMobileMenu(); break;\
+                // Sub-views accessed via menu\
+                case 'habits': content = renderMobileHabits(); break;\
+                case 'training': content = renderMobileTraining(); break;\
+                case 'people': content = renderPeople(); break; // Reuse simplified\
+                case 'ranking': content = renderRanking(); break; // Reuse simplified\
+                default: content = renderMobileTodo();\
+            \}\
+\
+            return `\
+                <div class="flex flex-col w-full h-full bg-gray-50">\
+                    <!-- CONTENT AREA (Scrollable) -->\
+                    <main class="flex-1 overflow-y-auto overflow-x-hidden pb-32 no-scrollbar">\
+                        $\{content\}\
+                    </main>\
+\
+                    <!-- STICKY INPUT (Only for Todo) -->\
+                    $\{currentView === 'todo' ? fab : ''\}\
+\
+                    <!-- BOTTOM NAVIGATION (Sticky) -->\
+                    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 pb-safe z-50">\
+                        <div class="flex justify-around items-center h-16">\
+                            <button onclick="router('todo')" class="flex flex-col items-center justify-center w-full h-full $\{currentView === 'todo' ? 'text-black' : 'text-gray-400'\}">\
+                                $\{ICONS.home\}\
+                                <span class="text-[10px] font-medium mt-1">Plan</span>\
+                            </button>\
+                            <button onclick="router('journal')" class="flex flex-col items-center justify-center w-full h-full $\{currentView === 'journal' ? 'text-black' : 'text-gray-400'\}">\
+                                $\{ICONS.book\}\
+                                <span class="text-[10px] font-medium mt-1">Journal</span>\
+                            </button>\
+                            <button onclick="router('habits')" class="flex flex-col items-center justify-center w-full h-full $\{currentView === 'habits' ? 'text-black' : 'text-gray-400'\}">\
+                                $\{ICONS.activity\}\
+                                <span class="text-[10px] font-medium mt-1">Habits</span>\
+                            </button>\
+                            <button onclick="router('menu')" class="flex flex-col items-center justify-center w-full h-full $\{currentView === 'menu' ? 'text-black' : 'text-gray-400'\}">\
+                                $\{ICONS.menu\}\
+                                <span class="text-[10px] font-medium mt-1">Mehr</span>\
+                            </button>\
+                        </div>\
+                    </nav>\
+                </div>\
+            `;\
+        \}\
+\
+        function renderMobileStickyInput() \{\
+            return `\
+                <div class="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 p-4 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent z-40">\
+                    <div class="bg-white rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 flex items-center p-1.5 pl-5 gap-3">\
+                        <input id="mobile-task-input" type="text" placeholder="Neue Aufgabe..." \
+                            class="flex-1 bg-transparent text-lg outline-none placeholder-gray-400 h-10"\
+                            onkeydown="if(event.key==='Enter') addTaskMobile()">\
+                         <select id="mobile-task-date" class="bg-gray-100 rounded-lg text-xs font-bold px-2 py-1 h-8 outline-none border-none text-gray-600 max-w-[80px]">\
+                            $\{getWeekDays().map(d => `<option value="$\{toISODate(d)\}" $\{toISODate(d) === viewState.todoDate ? 'selected' : ''\}>$\{d.toLocaleDateString('de-DE', \{weekday:'short'\})\}</option>`).join('')\}\
+                        </select>\
+                        <button onclick="addTaskMobile()" class="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform">\
+                            $\{ICONS.plus\}\
+                        </button>\
+                    </div>\
+                </div>\
+            `;\
+        \}\
+\
+        function renderMobileTodo() \{\
+            const week = getWeekDays();\
+            const todayISO = toISODate(new Date());\
+\
+            return `\
+                <div class="p-5 pt-8 fade-in">\
+                    <header class="mb-8">\
+                        <div class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">$\{new Date().toLocaleDateString('de-DE', \{weekday: 'long', month:'long', day:'numeric'\})\}</div>\
+                        <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">Dein Fokus</h1>\
+                    </header>\
+\
+                    <!-- Habits Quick View (Horizontal Scroll) -->\
+                    $\{state.habits.length > 0 ? `\
+                        <div class="mb-8">\
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Habits</h3>\
+                            <div class="flex gap-3 overflow-x-auto pb-4 -mx-5 px-5 no-scrollbar">\
+                                $\{state.habits.map(h => \{\
+                                    const isDoneToday = state.tasks.some(t => t.habitId === h.id && t.date === todayISO && t.completed);\
+                                    return `\
+                                    <button onclick="toggleHabit('$\{h.id\}', '$\{todayISO\}')" class="flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all $\{isDoneToday ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200'\} shadow-sm">\
+                                        <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center $\{isDoneToday ? 'border-white' : 'border-gray-300'\}">\
+                                            $\{isDoneToday ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''\}\
+                                        </div>\
+                                        <span class="font-bold text-sm whitespace-nowrap">$\{h.title\}</span>\
+                                    </button>`\
+                                \}).join('')\}\
+                            </div>\
+                        </div>\
+                    ` : ''\}\
+\
+                    <!-- Days Stack -->\
+                    <div class="space-y-8">\
+                        $\{week.map(day => \{\
+                            const dateStr = toISODate(day);\
+                            const isToday = dateStr === todayISO;\
+                            const tasks = state.tasks.filter(t => t.date === dateStr && !t.habitId);\
+                            \
+                            // Don't show empty days in past\
+                            if (dateStr < todayISO && tasks.length === 0) return '';\
+\
+                            return `\
+                                <div class="$\{isToday ? 'opacity-100' : 'opacity-80'\}">\
+                                    <div class="flex items-center gap-3 mb-4 sticky top-0 bg-gray-50/95 backdrop-blur py-2 z-10">\
+                                        <div class="text-2xl font-bold $\{isToday ? 'text-black' : 'text-gray-400'\}">$\{day.toLocaleDateString('de-DE', \{weekday: 'short'\})\}</div>\
+                                        <div class="h-px bg-gray-200 flex-1"></div>\
+                                        <div class="text-xs font-mono text-gray-400">$\{day.toLocaleDateString('de-DE', \{day:'2-digit', month:'2-digit'\})\}</div>\
+                                    </div>\
+\
+                                    $\{tasks.length === 0 ? `<div class="text-center py-6 text-gray-400 italic text-sm bg-gray-100/50 rounded-2xl border border-dashed border-gray-200">Keine Aufgaben</div>` : ''\}\
+\
+                                    <div class="space-y-3">\
+                                        $\{tasks.map(t => \{\
+                                            const theme = THEMES[t.category] || THEMES[CATEGORIES.UNASSIGNED];\
+                                            return `\
+                                                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4 active:scale-[0.98] transition-transform">\
+                                                    <button onclick="toggleTask('$\{t.id\}')" class="mt-1 w-7 h-7 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors $\{t.completed ? 'bg-black border-black text-white' : 'border-gray-300'\}">\
+                                                        $\{t.completed ? ICONS.check : ''\}\
+                                                    </button>\
+                                                    <div class="flex-1 min-w-0">\
+                                                        <div class="text-lg font-medium leading-snug $\{t.completed ? 'line-through text-gray-400' : 'text-gray-900'\} break-words">$\{t.text\}</div>\
+                                                        <div class="flex flex-wrap gap-2 mt-2">\
+                                                            <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md $\{theme.badge\}">$\{t.category\}</span>\
+                                                            $\{t.additionalInfo ? `<span class="text-[10px] text-gray-400 truncate max-w-full">$\{t.additionalInfo\}</span>` : ''\}\
+                                                        </div>\
+                                                    </div>\
+                                                    <button onclick="deleteTask('$\{t.id\}')" class="text-gray-300 p-2 -mr-2 hover:text-red-500">$\{ICONS.trash\}</button>\
+                                                </div>\
+                                            `\
+                                        \}).join('')\}\
+                                    </div>\
+                                </div>\
+                            `;\
+                        \}).join('')\}\
+                    </div>\
+                    \
+                    <button onclick="endWeek()" class="w-full mt-12 mb-8 bg-gray-200 text-gray-800 py-4 rounded-2xl font-bold text-sm uppercase tracking-wide">Woche abschlie\'dfen</button>\
+                </div>\
+            `;\
+        \}\
+\
+        function renderMobileJournal() \{\
+            return `\
+                <div class="p-5 pt-8 fade-in h-full">\
+                    <header class="mb-8 flex justify-between items-end">\
+                        <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">Journal</h1>\
+                        <button onclick="window.print()" class="bg-gray-100 p-3 rounded-full">$\{ICONS.book\}</button>\
+                    </header>\
+                    <div class="space-y-6">\
+                        $\{state.journal.length === 0 ? '<div class="text-center py-20 text-gray-400">Archiv ist leer.</div>' : ''\}\
+                        $\{state.journal.map(entry => `\
+                            <div class="bg-white p-6 rounded-3xl shadow-lg border border-gray-100">\
+                                <div class="flex justify-between items-center mb-4">\
+                                    <h3 class="text-2xl font-bold text-gray-900">$\{entry.weekLabel\}</h3>\
+                                    <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-lg">$\{entry.date\}</span>\
+                                </div>\
+                                <div class="bg-gray-50 p-4 rounded-xl text-gray-600 italic text-sm mb-6">\
+                                    "$\{entry.notes || 'Keine Notizen...'\}"\
+                                </div>\
+                                <div class="space-y-1">\
+                                    <div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Highlights</div>\
+                                    $\{entry.tasks.slice(0, 3).map(t => `<div class="flex items-center gap-2 text-sm text-gray-700"><div class="w-1.5 h-1.5 bg-black rounded-full"></div> $\{t.text\}</div>`).join('')\}\
+                                    $\{entry.tasks.length > 3 ? `<div class="text-xs text-gray-400 mt-1">+ $\{entry.tasks.length - 3\} weitere</div>` : ''\}\
+                                </div>\
+                            </div>\
+                        `).join('')\}\
+                    </div>\
+                </div>\
+            `;\
+        \}\
+\
+        function renderMobileHabits() \{\
+            // Reusing desktop-like logic but styled for mobile\
+            return `\
+                 <div class="p-5 pt-8 fade-in">\
+                    <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight mb-2">Habits</h1>\
+                    <p class="text-gray-500 mb-8">Level up your life.</p>\
+                    \
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-8 flex gap-2">\
+                        <input id="new-habit-input" type="text" placeholder="Neue Gewohnheit..." class="flex-1 bg-gray-50 rounded-xl px-4 text-lg outline-none h-12">\
+                        <button onclick="addHabit()" class="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center font-bold text-xl">+</button>\
+                    </div>\
+\
+                    <div class="space-y-4">\
+                        $\{state.habits.map(h => `\
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">\
+                                <div class="flex items-center gap-4">\
+                                    <div class="w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold text-2xl border-4 border-white shadow-sm">$\{h.level\}</div>\
+                                    <div>\
+                                        <h3 class="font-bold text-xl text-gray-900">$\{h.title\}</h3>\
+                                        <div class="text-sm text-gray-500">\uc0\u55357 \u56613  $\{h.streak\} Tage Streak</div>\
+                                    </div>\
+                                </div>\
+                                <button onclick="deleteHabit('$\{h.id\}')" class="text-gray-300 p-2">$\{ICONS.trash\}</button>\
+                            </div>\
+                        `).join('')\}\
+                    </div>\
+                    <div class="h-20"></div>\
+                 </div>\
+            `;\
+        \}\
+\
+        function renderMobileMenu() \{\
+            const menuItems = [\
+                \{ id: 'training', label: 'Training', desc: 'Workout Pl\'e4ne', icon: ICONS.activity \},\
+                \{ id: 'people', label: 'Personen', desc: 'Kontakte verwalten', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>' \},\
+                \{ id: 'ranking', label: 'Ranking', desc: 'Freundes-Ranking', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>' \},\
+                \{ id: 'intention', label: 'Intentionen', desc: 'Ziele & Hypothesen', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>' \},\
+            ];\
+\
+            return `\
+                <div class="p-5 pt-8 fade-in">\
+                    <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight mb-8">Men\'fc</h1>\
+                    <div class="grid grid-cols-1 gap-4">\
+                        $\{menuItems.map(item => `\
+                            <button onclick="router('$\{item.id\}')" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 active:scale-95 transition-transform text-left">\
+                                <div class="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-black">\
+                                    $\{item.icon\}\
+                                </div>\
+                                <div class="flex-1">\
+                                    <div class="font-bold text-xl text-gray-900">$\{item.label\}</div>\
+                                    <div class="text-sm text-gray-500">$\{item.desc\}</div>\
+                                </div>\
+                                <div class="text-gray-300">$\{ICONS.arrowRight\}</div>\
+                            </button>\
+                        `).join('')\}\
+                    </div>\
+                    \
+                    <div class="mt-8 border-t border-gray-100 pt-8">\
+                        <button onclick="downloadBackup()" class="w-full bg-gray-100 text-gray-900 p-4 rounded-2xl font-bold mb-4">Backup Speichern</button>\
+                        <button onclick="document.getElementById('backup-upload').click()" class="w-full bg-white border border-gray-200 text-gray-900 p-4 rounded-2xl font-bold">Backup Laden</button>\
+                    </div>\
+                </div>\
+            `;\
+        \}\
+\
+        // ==========================================\
+        //       DESKTOP LAYOUT (Classic)\
+        // ==========================================\
+\
+        function renderDesktopLayout() \{\
+            return `\
+                <div class="flex w-full h-full">\
+                    <!-- Sidebar -->\
+                    <div class="w-64 bg-white border-r border-gray-200 h-full p-6 flex flex-col no-print overflow-y-auto">\
+                        <h1 class="text-2xl font-bold mb-8 tracking-tight">Mindful<span class="text-gray-400">Weekly</span></h1>\
+                        <nav class="flex-1 space-y-1">\
+                            $\{['todo', 'journal', 'habits', 'training', 'intention', 'goals', 'people', 'ranking'].map(v => `\
+                                <button onclick="router('$\{v\}')" class="w-full text-left px-4 py-2 rounded-lg transition-colors $\{currentView === v ? 'bg-black text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'\} capitalize">\
+                                    $\{v\}\
+                                </button>\
+                            `).join('')\}\
+                        </nav>\
+                        <div class="text-xs text-gray-400 mt-8">&copy; 2025 Mindful</div>\
+                    </div>\
+\
+                    <!-- Main Content -->\
+                    <main class="flex-1 p-8 overflow-y-auto w-full">\
+                        <div class="max-w-[1600px] mx-auto pb-20">\
+                            $\{renderDesktopContent()\}\
+                        </div>\
+                    </main>\
+                </div>\
+            `;\
+        \}\
+\
+        function renderDesktopContent() \{\
+            switch(currentView) \{\
+                case 'todo': return renderDesktopTodo();\
+                case 'journal': return renderJournalCommon(false); // false = not mobile\
+                case 'habits': return renderHabitsCommon();\
+                case 'training': return renderTrainingCommon();\
+                case 'intention': return renderIntentionCommon();\
+                case 'goals': return renderGoalsCommon();\
+                case 'people': return renderPeople();\
+                case 'ranking': return renderRanking();\
+                default: return renderDesktopTodo();\
+            \}\
+        \}\
+\
+        function renderDesktopTodo() \{\
+            const week = getWeekDays();\
+            return `\
+                <header class="flex justify-between items-center mb-8">\
+                    <div>\
+                        <h2 class="text-3xl font-bold text-gray-900">Wochenplan</h2>\
+                        <p class="text-gray-500 mt-1">Plane deine Woche und reflektiere t\'e4glich.</p>\
+                    </div>\
+                    <button onclick="endWeek()" class="bg-black text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm">Woche beenden</button>\
+                </header>\
+\
+                <div class="flex gap-4 mb-6 flex-wrap text-sm no-print">\
+                    $\{Object.entries(THEMES).map(([cat, theme]) => `<div class="px-3 py-1 rounded-full border $\{theme.badge\}">$\{cat\}</div>`).join('')\}\
+                </div>\
+\
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-8 flex gap-4 items-center sticky top-4 z-20">\
+                    <input type="text" id="new-task-input" placeholder="Neue Aufgabe hinzuf\'fcgen..." class="flex-1 bg-white text-gray-900 border-none outline-none placeholder-gray-400 text-base" onkeydown="if(event.key==='Enter') addTask()">\
+                    <select id="new-task-date" class="text-sm border-gray-200 border rounded-lg px-2 py-2 bg-white text-gray-900">\
+                        $\{week.map(d => `<option value="$\{toISODate(d)\}" $\{toISODate(d) === viewState.todoDate ? 'selected' : ''\}>$\{d.toLocaleDateString('de-DE', \{weekday:'short'\})\}, $\{d.toLocaleDateString('de-DE')\}</option>`).join('')\}\
+                    </select>\
+                    <button onclick="addTask()" class="bg-blue-600 text-white p-2.5 rounded-lg hover:bg-blue-700 transition-colors">$\{ICONS.plus\}</button>\
+                </div>\
+\
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 items-stretch">\
+                    $\{week.map(day => renderDayColumn(day)).join('')\}\
+                </div>\
+            `;\
+        \}\
+\
+        function renderDayColumn(day) \{\
+            const dateStr = toISODate(day);\
+            const isToday = toISODate(new Date()) === dateStr;\
+            const tasks = state.tasks.filter(t => t.date === dateStr);\
+            const reflection = state.dailyReflections[dateStr] || \{ mood: '', gratitude: '', improvement: '' \};\
+\
+            return `\
+                <div ondragover="allowDrop(event)" ondrop="dropTask(event, '$\{dateStr\}')" class="bg-white rounded-xl border $\{isToday ? 'border-black ring-1 ring-black' : 'border-gray-200'\} overflow-hidden shadow-sm flex flex-col h-full min-h-[600px] transition-colors hover:bg-gray-50/50">\
+                    <div class="p-4 $\{isToday ? 'bg-black text-white' : 'bg-gray-50 text-gray-900'\} border-b border-gray-200 flex justify-between items-baseline">\
+                        <div>\
+                            <span class="text-sm font-bold uppercase mr-2">$\{day.toLocaleDateString('de-DE', \{weekday:'short'\})\}</span>\
+                            <span class="font-mono $\{isToday ? 'text-gray-300' : 'text-gray-400'\}">$\{day.toLocaleDateString('de-DE', \{day:'2-digit', month:'2-digit'\})\}</span>\
+                        </div>\
+                        <button onclick="setTaskDate('$\{dateStr\}')" class="text-xs font-medium hover:underline $\{isToday ? 'text-white' : 'text-blue-600'\} no-print">+ Add</button>\
+                    </div>\
+                    \
+                    <div class="px-4 pt-4 pb-2">\
+                            $\{state.habits.map(h => \{\
+                            const isDone = tasks.some(t => t.habitId === h.id && t.completed);\
+                            const theme = THEMES[h.category] || THEMES[CATEGORIES.UNASSIGNED];\
+                            return `\
+                                <div onclick="toggleHabit('$\{h.id\}', '$\{dateStr\}')" class="flex items-center gap-2 mb-2 p-2 rounded border cursor-pointer group transition-all $\{isDone ? 'bg-gray-50 border-gray-200' : 'bg-white border-dashed border-gray-300 hover:border-black'\}">\
+                                    <div class="w-4 h-4 rounded border transition-all flex items-center justify-center $\{isDone ? 'bg-black border-black text-white' : 'border-gray-300'\}">$\{isDone ? ICONS.check : ''\}</div>\
+                                    <span class="text-xs font-medium $\{isDone ? 'text-gray-400 line-through' : 'text-gray-700'\}">$\{h.title\}</span>\
+                                </div>`\
+                            \}).join('')\}\
+                            $\{state.habits.length > 0 ? '<div class="h-px bg-gray-100 my-2"></div>' : ''\}\
+                    </div>\
+\
+                    <div class="p-4 flex-1 space-y-2">\
+                        $\{tasks.filter(t => !t.habitId).map(t => \{\
+                            const theme = THEMES[t.category] || THEMES[CATEGORIES.UNASSIGNED];\
+                            return `\
+                                <div draggable="true" ondragstart="dragTask(event, '$\{t.id\}')" class="group flex items-start gap-3 p-3 rounded-r-lg border-t border-b border-r border-l-[4px] bg-white transition-all shadow-sm $\{theme.border\} border-gray-100 cursor-move active:opacity-50">\
+                                    <button onclick="toggleTask('$\{t.id\}')" class="mt-1 w-5 h-5 rounded border flex items-center justify-center transition-colors $\{t.completed ? 'bg-black border-black text-white' : 'border-gray-300 hover:border-black'\}">$\{t.completed ? ICONS.check : ''\}</button>\
+                                    <div class="flex-1">\
+                                        <p class="text-sm $\{t.completed ? 'line-through text-gray-400' : 'text-gray-900 font-medium'\}">$\{t.text\}</p>\
+                                        <div class="flex flex-wrap items-center gap-2 mt-1">\
+                                            <span class="text-[10px] uppercase tracking-wider font-bold opacity-80 $\{theme.text\}">$\{t.category\}</span>\
+                                        </div>\
+                                    </div>\
+                                    <button onclick="deleteTask('$\{t.id\}')" class="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity">$\{ICONS.trash\}</button>\
+                                </div>\
+                            `\
+                        \}).join('')\}\
+                    </div>\
+                </div>\
+            `;\
+        \}\
+\
+        // --- SHARED RENDER LOGIC (Used by Desktop or Mobile Wrappers) ---\
+\
+        function renderJournalCommon(isDesktop) \{\
+            return `\
+                <div class="$\{isDesktop ? '' : 'p-4'\}">\
+                    <header class="flex justify-between items-center mb-8 no-print">\
+                        <div>\
+                            <h2 class="text-3xl font-bold text-gray-900">Journal</h2>\
+                            <p class="text-gray-500 mt-1">Archivierte Wochen.</p>\
+                        </div>\
+                        <div class="flex gap-2">\
+                             <button onclick="downloadBackup()" class="p-2 border border-gray-200 bg-white rounded-lg text-gray-600 hover:bg-gray-50">$\{ICONS.home\}</button>\
+                             <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800">$\{ICONS.book\} PDF</button>\
+                        </div>\
+                    </header>\
+                    <div class="space-y-16">\
+                        $\{state.journal.length === 0 ? '<div class="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300 text-gray-500">Noch keine Eintr\'e4ge.</div>' : ''\}\
+                        $\{state.journal.map(entry => `\
+                        <article class="journal-entry pb-12 border-b border-gray-300 last:border-0">\
+                            <h3 class="text-2xl font-bold text-gray-900 mb-4">$\{entry.weekLabel\} <span class="text-sm font-normal text-gray-400">($\{entry.date\})</span></h3>\
+                            <textarea onchange="updateJournalNote('$\{entry.id\}', this.value)" class="w-full bg-transparent text-gray-600 outline-none resize-none font-sans italic text-sm mb-8" placeholder="Gedanken..." rows="2">$\{entry.notes || ''\}</textarea>\
+                            <div class="bg-[#1e1e1e] text-gray-200 p-8 rounded-xl font-sans shadow-2xl leading-relaxed text-sm">\
+                                $\{Object.keys(groupBy(entry.tasks, 'date')).sort().map(dStr => `\
+                                    <div class="mb-6 last:mb-0">\
+                                        <div class="flex items-center gap-2 mb-2">\
+                                            <div class="w-1.5 h-1.5 rounded-full bg-white"></div>\
+                                            <span class="text-lg font-bold text-gray-100">$\{new Date(dStr).toLocaleDateString('de-DE', \{day:'2-digit', month:'2-digit'\})\}</span>\
+                                        </div>\
+                                        <ul class="pl-5 space-y-1">\
+                                            $\{groupBy(entry.tasks, 'date')[dStr].map(t => `<li class="list-disc text-gray-300"><span>$\{t.text\}</span></li>`).join('')\}\
+                                        </ul>\
+                                    </div>\
+                                `).join('')\}\
+                            </div>\
+                        </article>\
+                        `).join('')\}\
+                    </div>\
+                </div>\
+            `;\
+        \}\
+\
+        function renderHabitsCommon() \{\
+             return `\
+                <div class="max-w-3xl mx-auto">\
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Gewohnheiten</h2>\
+                    <div class="flex gap-4 mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">\
+                        <input id="new-habit-input" type="text" placeholder="Neue Gewohnheit..." class="flex-1 p-2 border border-gray-300 rounded-lg outline-none">\
+                        <select id="new-habit-cat" class="bg-white border border-gray-300 rounded-lg p-2">\
+                            $\{Object.values(CATEGORIES).map(c => `<option value="$\{c\}">$\{c\}</option>`).join('')\}\
+                        </select>\
+                        <button onclick="addHabit()" class="bg-black text-white px-6 py-2 rounded-lg font-medium">Starten</button>\
+                    </div>\
+                    <div class="grid gap-4">\
+                        $\{state.habits.map(h => `\
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">\
+                                <div class="flex items-center gap-4">\
+                                    <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold text-xl border-2 border-yellow-200">$\{h.level\}</div>\
+                                    <div>\
+                                        <h3 class="font-bold text-lg text-gray-900 flex items-center gap-2">$\{h.title\} <span class="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-100">$\{h.category\}</span></h3>\
+                                        <div class="text-sm text-gray-500">Streak: $\{h.streak\} Tage</div>\
+                                    </div>\
+                                </div>\
+                                <button onclick="deleteHabit('$\{h.id\}')" class="text-red-500 hover:bg-red-50 p-2 rounded-full">$\{ICONS.trash\}</button>\
+                            </div>\
+                        `).join('')\}\
+                    </div>\
+                </div>\
+            `;\
+        \}\
+        \
+        function renderMobileTraining() \{ return `<div class="p-5 pt-8">$\{renderTrainingCommon()\}</div>`; \}\
+\
+        function renderTrainingCommon() \{\
+             return `\
+                <div class="max-w-4xl mx-auto">\
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Training</h2>\
+                    <div class="grid md:grid-cols-[1fr_2fr] gap-8 mt-8 grid-cols-1">\
+                        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-fit">\
+                            <h3 class="font-bold text-lg mb-4">Neuer Plan</h3>\
+                            <input id="workout-name" placeholder="Name" class="w-full p-2 border border-gray-300 rounded-lg mb-4 text-base">\
+                            <textarea id="workout-desc" placeholder="\'dcbungen..." class="w-full p-2 border border-gray-300 rounded-lg mb-4 h-32 text-base"></textarea>\
+                            <button onclick="addWorkout()" class="w-full bg-black text-white py-3 rounded-lg font-bold">Erstellen</button>\
+                        </div>\
+                        <div class="space-y-6">\
+                            $\{state.workouts.map(w => `\
+                                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">\
+                                    <div class="flex justify-between items-start mb-4">\
+                                        <div><h3 class="font-bold text-xl">$\{w.name\}</h3><p class="text-gray-500 text-sm whitespace-pre-line mt-2">$\{w.description\}</p></div>\
+                                        <button onclick="deleteWorkout('$\{w.id\}')" class="text-red-500">$\{ICONS.trash\}</button>\
+                                    </div>\
+                                    <div class="border-t border-gray-100 pt-4 flex flex-wrap gap-2">\
+                                        $\{getWeekDays().map(d => `<button onclick="scheduleWorkout('$\{w.id\}', '$\{toISODate(d)\}')" class="px-3 py-1 bg-gray-100 hover:bg-black hover:text-white rounded-md text-xs font-medium">$\{d.toLocaleDateString('de-DE', \{weekday:'short'\})\}</button>`).join('')\}\
+                                    </div>\
+                                </div>\
+                            `).join('')\}\
+                        </div>\
+                    </div>\
+                </div>\
+            `;\
+        \}\
+\
+        function renderIntentionCommon() \{\
+             return `\
+                <div class="max-w-3xl mx-auto p-4 md:p-0">\
+                    <h2 class="text-3xl font-bold mb-8">Intentionen</h2>\
+                    <div class="grid gap-6">\
+                        $\{['day', 'week', 'month', 'year'].map(k => `\
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">\
+                                <h3 class="font-semibold text-lg mb-3 capitalize">$\{k\}-Hypothese</h3>\
+                                <textarea onchange="state.intention['$\{k\}']=this.value; saveState()" class="w-full h-32 p-4 border border-gray-300 rounded-lg resize-none text-base">$\{state.intention[k]\}</textarea>\
+                            </div>\
+                        `).join('')\}\
+                    </div>\
+                </div>`;\
+        \}\
+\
+        function renderGoalsCommon() \{\
+            return `\
+                <div class="max-w-3xl mx-auto space-y-8 p-4 md:p-0">\
+                    <h2 class="text-3xl font-bold">Ziele</h2>\
+                    <div class="bg-white p-8 rounded-2xl border border-gray-200"><h3 class="font-bold mb-4">Monatlich</h3><textarea onchange="state.goals.monthly=this.value; saveState()" class="w-full h-48 p-4 border rounded-lg resize-none text-base">$\{state.goals.monthly\}</textarea></div>\
+                    <div class="bg-white p-8 rounded-2xl border border-gray-200"><h3 class="font-bold mb-4">J\'e4hrlich</h3><textarea onchange="state.goals.yearly=this.value; saveState()" class="w-full h-48 p-4 border rounded-lg resize-none text-base">$\{state.goals.yearly\}</textarea></div>\
+                </div>`;\
+        \}\
+\
+        function renderPeople() \{\
+             const isMob = window.innerWidth < 768;\
+             return `\
+                <div class="max-w-2xl mx-auto $\{isMob ? 'p-5 pt-8' : ''\}">\
+                    <h2 class="text-3xl font-bold mb-8">Personen</h2>\
+                    <div class="flex gap-4 mb-8"><input id="new-person" placeholder="Name..." class="flex-1 p-3 border rounded-lg text-lg"><button onclick="addPerson()" class="bg-black text-white px-6 rounded-lg font-bold">Add</button></div>\
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">\
+                        $\{state.people.map(p => `<div class="p-4 flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-600">$\{p.name[0]\}</div><span class="text-lg font-medium">$\{p.name\}</span></div>`).join('')\}\
+                    </div>\
+                </div>`;\
+        \}\
+\
+        function renderRanking() \{\
+            const date = viewState.rankingDate;\
+            const isMob = window.innerWidth < 768;\
+            let ranking = state.friendRankings[date] || state.people.map(p => p.id);\
+            state.people.forEach(p => \{ if(!ranking.includes(p.id)) ranking.push(p.id); \});\
+\
+            return `\
+                <div class="max-w-2xl mx-auto $\{isMob ? 'p-5 pt-8' : ''\} pb-20">\
+                    <header class="mb-8 flex justify-between items-center">\
+                        <h2 class="text-3xl font-bold">Ranking</h2>\
+                        <input type="date" value="$\{date\}" onchange="changeRankingDate(this.value)" class="border rounded px-3 py-2 bg-white">\
+                    </header>\
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6 space-y-3">\
+                        $\{ranking.map((id, idx) => \{\
+                            const p = state.people.find(x => x.id === id) || \{name: 'Deleted'\};\
+                            return `\
+                                <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">\
+                                    <span class="font-mono text-gray-400 font-bold w-6 text-center text-xl">$\{idx + 1\}.</span>\
+                                    <div class="flex-1 font-medium text-lg">$\{p.name\}</div>\
+                                    <div class="flex gap-2">\
+                                        <button onclick="moveRank('$\{date\}', $\{idx\}, -1)" class="p-2 bg-white rounded-lg border hover:border-black">$\{ICONS.home /* Up arrow visual cheat */\}</button>\
+                                        <button onclick="moveRank('$\{date\}', $\{idx\}, 1)" class="p-2 bg-white rounded-lg border hover:border-black">$\{ICONS.activity /* Down */\}</button>\
+                                    </div>\
+                                </div>`;\
+                        \}).join('')\}\
+                    </div>\
+                    <button onclick="saveRanking('$\{date\}')" class="w-full bg-black text-white px-6 py-4 rounded-xl font-bold shadow-lg">Speichern</button>\
+                </div>\
+            `;\
+        \}\
+\
+\
+        // --- LOGIC FUNCTIONS (Shared) ---\
+        \
+        function getWeekDays() \{\
+            const curr = new Date();\
+            const currentDay = curr.getDay(); // 0=Sun\
+            const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;\
+            const monday = new Date(curr);\
+            monday.setDate(curr.getDate() + distanceToMonday);\
+            const week = [];\
+            for(let i=0; i<7; i++) \{\
+                const d = new Date(monday);\
+                d.setDate(monday.getDate() + i);\
+                week.push(d);\
+            \}\
+            return week;\
+        \}\
+\
+        function toISODate(d) \{ return d.toISOString().split('T')[0]; \}\
+\
+        function simpleCategorize(text) \{\
+            const lower = text.toLowerCase();\
+            if(lower.match(/arbeit|studium|lernen|mail|anruf|termin|organi/)) return CATEGORIES.FOCUS;\
+            if(lower.match(/malen|schreiben|kunst|musik|design|idee/)) return CATEGORIES.CREATIVE;\
+            if(lower.match(/sport|lauf|gym|essen|kochen|schlaf|arzt/)) return CATEGORIES.BODY;\
+            if(lower.match(/tagebuch|dankbar|medita|denken|f\'fchlen/)) return CATEGORIES.MENTAL;\
+            if(lower.match(/freunde|treffen|spiel|film|serie|party/)) return CATEGORIES.LEISURE;\
+            return CATEGORIES.UNASSIGNED;\
+        \}\
+\
+        // Drag & Drop (Desktop Only)\
+        window.allowDrop = (ev) => \{ ev.preventDefault(); ev.dataTransfer.dropEffect = "move"; \};\
+        let draggedTaskId = null;\
+        window.dragTask = (ev, id) => \{ draggedTaskId = id; ev.dataTransfer.setData("text/plain", id); ev.dataTransfer.effectAllowed = "move"; \};\
+        window.dropTask = (ev, dateStr) => \{\
+            ev.preventDefault();\
+            const task = state.tasks.find(t => t.id === draggedTaskId);\
+            if(task && task.date !== dateStr) \{ task.date = dateStr; saveState(); \}\
+            draggedTaskId = null;\
+        \};\
+\
+        // Actions\
+        window.setTaskDate = (d) => \{ viewState.todoDate = d; document.getElementById('new-task-date').value = d; document.getElementById('new-task-input').focus(); \};\
+        window.addTask = () => \{\
+            const input = document.getElementById('new-task-input');\
+            const text = input.value.trim();\
+            if(!text) return;\
+            createTask(text, viewState.todoDate);\
+            input.value = '';\
+        \};\
+        window.addTaskMobile = () => \{\
+             const input = document.getElementById('mobile-task-input');\
+             const date = document.getElementById('mobile-task-date').value;\
+             const text = input.value.trim();\
+             if(!text) return;\
+             createTask(text, date);\
+             input.value = '';\
+        \};\
+        function createTask(text, date) \{\
+            state.tasks.push(\{\
+                id: generateId(), text, completed: false, date, category: simpleCategorize(text), peopleIds: [], createdAt: Date.now()\
+            \});\
+            saveState();\
+        \}\
+\
+        window.toggleTask = (id) => \{ const t = state.tasks.find(x => x.id === id); if(t) \{ t.completed = !t.completed; saveState(); \} \};\
+        window.deleteTask = (id) => \{ state.tasks = state.tasks.filter(x => x.id !== id); saveState(); \};\
+        window.updateReflection = (date, field, val) => \{\
+            if(!state.dailyReflections[date]) state.dailyReflections[date] = \{ mood: '', gratitude: '', improvement: '' \};\
+            state.dailyReflections[date][field] = val;\
+            saveState();\
+        \};\
+        window.toggleHabit = (habitId, date) => \{\
+            const exists = state.tasks.find(t => t.habitId === habitId && t.date === date);\
+            if(exists) \{\
+                state.tasks = state.tasks.filter(t => t.id !== exists.id);\
+            \} else \{\
+                const h = state.habits.find(x => x.id === habitId);\
+                state.tasks.push(\{\
+                    id: generateId(), text: h.title, completed: true, date: date, category: h.category, peopleIds: [], habitId: h.id, createdAt: Date.now()\
+                \});\
+                h.streak++;\
+                h.level = Math.floor(h.streak / 7) + 1;\
+            \}\
+            saveState();\
+        \};\
+        window.endWeek = () => \{\
+            if(!confirm("Woche beenden?")) return;\
+            const weekNum = Math.ceil(((new Date().getTime() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7);\
+            const entry = \{\
+                id: generateId(), date: new Date().toLocaleDateString('de-DE'), archivedDate: new Date().toLocaleDateString('de-DE'), weekLabel: `KW $\{weekNum\}`,\
+                tasks: [...state.tasks], reflections: JSON.parse(JSON.stringify(state.dailyReflections)), notes: ''\
+            \};\
+            state.journal.unshift(entry);\
+            state.tasks = []; state.dailyReflections = \{\};\
+            saveState();\
+        \};\
+\
+        window.updateJournalNote = (id, txt) => \{ const e = state.journal.find(x => x.id === id); if(e) \{ e.notes = txt; saveState(); \} \};\
+        window.downloadBackup = () => \{\
+            const blob = new Blob([localStorage.getItem(STORAGE_KEY)], \{ type: 'application/json' \});\
+            const url = URL.createObjectURL(blob);\
+            const a = document.createElement('a'); a.href = url; a.download = `mindful_backup_$\{toISODate(new Date())\}.json`;\
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);\
+        \};\
+        window.handleBackupUpload = (ev) => \{\
+            const file = ev.target.files[0]; if(!file) return;\
+            const r = new FileReader();\
+            r.onload = (e) => \{\
+                try \{ const parsed = JSON.parse(e.target.result); if(parsed.journal) \{ state = parsed; saveState(); alert('Backup geladen!'); \} \} catch(err) \{ alert('Fehler'); \}\
+            \};\
+            r.readAsText(file);\
+        \};\
+\
+        window.addHabit = () => \{\
+            const title = document.getElementById('new-habit-input').value;\
+            const cat = document.getElementById('new-habit-cat') ? document.getElementById('new-habit-cat').value : CATEGORIES.UNASSIGNED;\
+            if(title) \{ state.habits.push(\{ id: generateId(), title, category: cat, streak: 0, level: 1 \}); saveState(); \}\
+        \};\
+        window.deleteHabit = (id) => \{ state.habits = state.habits.filter(h => h.id !== id); saveState(); \};\
+\
+        window.addWorkout = () => \{\
+            const name = document.getElementById('workout-name').value;\
+            const desc = document.getElementById('workout-desc').value;\
+            if(name) \{ state.workouts.push(\{ id: generateId(), name, description: desc, scheduledDays: [] \}); saveState(); \}\
+        \};\
+        window.deleteWorkout = (id) => \{ state.workouts = state.workouts.filter(w => w.id !== id); saveState(); \};\
+        window.scheduleWorkout = (wid, date) => \{\
+            const w = state.workouts.find(x => x.id === wid);\
+            createTask(`Training: $\{w.name\}`, date);\
+            alert('Geplant!');\
+        \};\
+        window.addPerson = () => \{ const n = document.getElementById('new-person').value; if(n) \{ state.people.push(\{id: generateId(), name: n\}); saveState(); \} \};\
+        window.changeRankingDate = (d) => \{ viewState.rankingDate = d; render(); \};\
+        window.moveRank = (date, idx, dir) => \{\
+            let list = state.friendRankings[date] || state.people.map(p => p.id);\
+            const target = idx + dir;\
+            if(target >= 0 && target < list.length) \{\
+                [list[idx], list[target]] = [list[target], list[idx]];\
+                state.friendRankings[date] = list;\
+                saveState();\
+            \}\
+        \};\
+        window.saveRanking = (d) => \{ alert('Gespeichert'); \};\
+        \
+        // Helper for Journal Grouping\
+        const groupBy = (xs, key) => xs.reduce((rv, x) => \{ (rv[x[key]] = rv[x[key]] || []).push(x); return rv; \}, \{\});\
+\
+    </script>\
+</body>\
+</html>}
